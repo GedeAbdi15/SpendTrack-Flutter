@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/gemini_service.dart';
 import '../../../core/supabase_client.dart';
 
@@ -17,15 +18,33 @@ class _UploadScreenState extends State<UploadScreen> {
   Map<String, dynamic>? _parsedResult;
 
   Future<void> _pickImage(ImageSource source) async {
+    if (source == ImageSource.camera) {
+      final status = await Permission.camera.request();
+      if (!status.isGranted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Camera permission denied')),
+        );
+        return;
+      }
+    } else {
+      final status = await Permission.photos.request();
+      if (!status.isGranted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gallery permission denied')),
+        );
+        return;
+      }
+    }
+
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source);
-    if (pickedFile != null) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-        _parsedResult = null;
-      });
-      await _processImage();
-    }
+    if (pickedFile == null) return;
+
+    setState(() {
+      _imageFile = File(pickedFile.path);
+      _parsedResult = null;
+    });
+    await _processImage();
   }
 
   Future<void> _processImage() async {
@@ -46,15 +65,20 @@ class _UploadScreenState extends State<UploadScreen> {
     final user = SupabaseConfig.client.auth.currentUser;
     if (user == null) return;
 
-    final itemsInsert = await SupabaseConfig.client.from('items').insert({
-      'user_id': user.id,
-      'date': _parsedResult!['date'],
-      'total': _parsedResult!['total'],
-    }).select().single();
+    final itemsInsert = await SupabaseConfig.client
+        .from('items')
+        .insert({
+          'user_id': user.id,
+          'date': _parsedResult!['date'],
+          'total': _parsedResult!['total'],
+        })
+        .select()
+        .single();
 
     final itemId = itemsInsert['id'];
 
-    final details = List<Map<String, dynamic>>.from(_parsedResult!['items'] ?? []);
+    final details =
+        List<Map<String, dynamic>>.from(_parsedResult!['items'] ?? []);
     for (var detail in details) {
       await SupabaseConfig.client.from('item_detail').insert({
         'item_id': itemId,
@@ -72,7 +96,8 @@ class _UploadScreenState extends State<UploadScreen> {
   Widget _buildPreview() {
     if (_parsedResult == null) return const SizedBox.shrink();
 
-    final items = List<Map<String, dynamic>>.from(_parsedResult!['items'] ?? []);
+    final items =
+        List<Map<String, dynamic>>.from(_parsedResult!['items'] ?? []);
 
     return Card(
       elevation: 2,
@@ -83,10 +108,13 @@ class _UploadScreenState extends State<UploadScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Date: ${_parsedResult!['date']}", style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text("Total: Rp ${_parsedResult!['total']}", style: const TextStyle(fontSize: 16)),
+            Text("Date: ${_parsedResult!['date']}",
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text("Total: Rp ${_parsedResult!['total']}",
+                style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 12),
-            const Text("Item Details:", style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text("Item Details:",
+                style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Table(
               border: TableBorder.all(color: Colors.grey.shade300),
@@ -99,18 +127,33 @@ class _UploadScreenState extends State<UploadScreen> {
                 const TableRow(
                   decoration: BoxDecoration(color: Color(0xFFEFEFEF)),
                   children: [
-                    Padding(padding: EdgeInsets.all(6), child: Text('Name', style: TextStyle(fontWeight: FontWeight.bold))),
-                    Padding(padding: EdgeInsets.all(6), child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold))),
-                    Padding(padding: EdgeInsets.all(6), child: Text('Price', style: TextStyle(fontWeight: FontWeight.bold))),
+                    Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Text('Name',
+                            style: TextStyle(fontWeight: FontWeight.bold))),
+                    Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Text('Qty',
+                            style: TextStyle(fontWeight: FontWeight.bold))),
+                    Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Text('Price',
+                            style: TextStyle(fontWeight: FontWeight.bold))),
                   ],
                 ),
                 ...items.map((item) => TableRow(
-                  children: [
-                    Padding(padding: const EdgeInsets.all(6), child: Text(item['name'].toString())),
-                    Padding(padding: const EdgeInsets.all(6), child: Text(item['qty'].toString())),
-                    Padding(padding: const EdgeInsets.all(6), child: Text(item['price'].toString())),
-                  ],
-                )),
+                      children: [
+                        Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Text(item['name'].toString())),
+                        Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Text(item['qty'].toString())),
+                        Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Text(item['price'].toString())),
+                      ],
+                    )),
               ],
             ),
           ],
@@ -132,10 +175,11 @@ class _UploadScreenState extends State<UploadScreen> {
                 borderRadius: BorderRadius.circular(12),
                 child: Image.file(_imageFile!, height: 200),
               ),
-            if (_loading) const Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(),
-            ),
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
+              ),
             _buildPreview(),
             const SizedBox(height: 20),
             Row(

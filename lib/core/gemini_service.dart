@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
-  static const String _apiKey = "AIzaSyC1dM4bsCrrBv0lSpHrLRO3NyelBfo3VrM"; // Ganti dengan API Key
-  static const String _model = "gemini-1.5-flash"; // Gratis (Flash 2.5)
+  static final String _apiKey =
+      dotenv.env['GEMINI_API_KEY']!; // Ganti dengan API Key
+  static final String _model =
+      dotenv.env['GEMINI_MODEL']!; // Gratis (Flash 2.5)
 
   /// Kirim gambar nota ke Gemini API dan parsing hasilnya ke JSON
   static Future<Map<String, dynamic>> parseReceipt(File imageFile) async {
@@ -23,8 +26,8 @@ You are a receipt parser. Analyze the uploaded receipt and return a JSON with th
 If data is missing, use null or 0.
 ''';
 
-    final url =
-    Uri.parse("https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey");
+    final url = Uri.parse(
+        "https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey");
 
     final body = jsonEncode({
       "contents": [
@@ -58,10 +61,8 @@ If data is missing, use null or 0.
     if (text == null) throw Exception("No response text from Gemini API");
 
     // Bersihkan response agar menjadi JSON valid
-    final cleanedText = text
-        .replaceAll("```json", "")
-        .replaceAll("```", "")
-        .trim();
+    final cleanedText =
+        text.replaceAll("```json", "").replaceAll("```", "").trim();
 
     return jsonDecode(cleanedText);
   }
