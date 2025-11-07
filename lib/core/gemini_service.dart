@@ -27,7 +27,7 @@ If data is missing, use null or 0.
 ''';
 
     final url = Uri.parse(
-        "https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey");
+        "https://generativelanguage.googleapis.com/v1/models/$_model:generateContent?key=$_apiKey");
 
     final body = jsonEncode({
       "contents": [

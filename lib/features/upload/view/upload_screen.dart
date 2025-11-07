@@ -51,12 +51,23 @@ class _UploadScreenState extends State<UploadScreen> {
     if (_imageFile == null) return;
     setState(() => _loading = true);
 
-    final result = await GeminiService.parseReceipt(_imageFile!);
+    try {
+      print("Processing image: ${_imageFile!.path}");
+      final result = await GeminiService.parseReceipt(_imageFile!);
+      print("Gemini result: $result");
 
-    setState(() {
-      _parsedResult = result;
-      _loading = false;
-    });
+      setState(() {
+        _parsedResult = result;
+        // _loading = false;
+      });
+    } catch (e, s) {
+      print("Error in _processImage: $e\n$s");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memproses gambar: $e')),
+      );
+    } finally {
+      setState(() => _loading = false);
+    }
   }
 
   Future<void> _saveToDatabase() async {
